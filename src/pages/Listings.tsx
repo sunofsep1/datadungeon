@@ -54,6 +54,7 @@ export default function Listings() {
   const [listings, setListings] = useState<Listing[]>(mockListings);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newListing, setNewListing] = useState<Omit<Listing, 'id'>>(createEmptyListing());
+  const [editingId, setEditingId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const handleAddListing = () => {
@@ -61,19 +62,53 @@ export default function Listings() {
       toast({ title: "Error", description: "Please enter an address", variant: "destructive" });
       return;
     }
-    const listing: Listing = {
-      ...newListing,
-      id: Date.now().toString(),
-    };
-    setListings([...listings, listing]);
+    
+    if (editingId) {
+      setListings(listings.map(l => 
+        l.id === editingId ? { ...newListing, id: editingId } : l
+      ));
+      toast({ title: "Success", description: "Property updated successfully" });
+    } else {
+      const listing: Listing = {
+        ...newListing,
+        id: Date.now().toString(),
+      };
+      setListings([...listings, listing]);
+      toast({ title: "Success", description: "Property added successfully" });
+    }
+    
     setNewListing(createEmptyListing());
+    setEditingId(null);
     setIsDialogOpen(false);
-    toast({ title: "Success", description: "Property added successfully" });
+  };
+
+  const handleEditListing = (listing: Listing) => {
+    setNewListing({
+      address: listing.address,
+      suburb: listing.suburb,
+      price: listing.price,
+      bedrooms: listing.bedrooms,
+      bathrooms: listing.bathrooms,
+      landSize: listing.landSize,
+      propertyType: listing.propertyType,
+      status: listing.status,
+      description: listing.description,
+    });
+    setEditingId(listing.id);
+    setIsDialogOpen(true);
   };
 
   const handleDeleteListing = (id: string) => {
     setListings(listings.filter(l => l.id !== id));
     toast({ title: "Deleted", description: "Property removed successfully" });
+  };
+
+  const handleDialogChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setNewListing(createEmptyListing());
+      setEditingId(null);
+    }
   };
 
   return (
@@ -82,7 +117,7 @@ export default function Listings() {
         title="Properties & Listings"
         description="Manage your property portfolio"
         actions={
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
             <DialogTrigger asChild>
               <Button className="gap-2">
                 <Plus className="w-4 h-4" />
@@ -91,7 +126,7 @@ export default function Listings() {
             </DialogTrigger>
             <DialogContent className="sm:max-w-[600px] bg-popover border-border max-h-[85vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Add New Property</DialogTitle>
+                <DialogTitle>{editingId ? "Edit Property" : "Add New Property"}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 mt-4">
                 <div className="space-y-2">
@@ -203,10 +238,10 @@ export default function Listings() {
                 </div>
               </div>
               <div className="flex justify-end gap-3 mt-6">
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                <Button variant="outline" onClick={() => handleDialogChange(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleAddListing}>Save Property</Button>
+                <Button onClick={handleAddListing}>{editingId ? "Update" : "Save Property"}</Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -250,7 +285,12 @@ export default function Listings() {
               </span>
             </div>
             <div className="flex gap-2 pt-2 border-t border-border">
-              <Button variant="outline" size="sm" className="flex-1 gap-1">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex-1 gap-1"
+                onClick={() => handleEditListing(listing)}
+              >
                 <Pencil className="w-4 h-4" />
                 Edit
               </Button>

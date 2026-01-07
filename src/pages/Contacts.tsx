@@ -243,6 +243,8 @@ export default function Contacts() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newContact, setNewContact] = useState<Omit<Contact, 'id'>>(createEmptyContact());
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const { toast } = useToast();
 
   const stats = {
@@ -281,6 +283,11 @@ export default function Contacts() {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleViewContact = (contact: Contact) => {
+    setSelectedContact(contact);
+    setIsDetailOpen(true);
   };
 
   const updateEntryRequirement = (index: number, checked: boolean) => {
@@ -726,7 +733,12 @@ export default function Contacts() {
             </div>
             
             <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-0 border-border print:hidden">
-              <Button variant="default" size="sm" className="flex-1 sm:flex-none gap-1">
+              <Button 
+                variant="default" 
+                size="sm" 
+                className="flex-1 sm:flex-none gap-1"
+                onClick={() => handleViewContact(contact)}
+              >
                 <Eye className="w-4 h-4" />
                 <span className="sm:hidden">View Details</span>
               </Button>
@@ -742,6 +754,151 @@ export default function Contacts() {
           </div>
         ))}
       </div>
+
+      {/* Contact Detail Dialog */}
+      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+        <DialogContent className="sm:max-w-[600px] bg-popover border-border max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              {selectedContact && <AvatarCircle name={selectedContact.name} size="lg" />}
+              <div>
+                <p>{selectedContact?.name}</p>
+                {selectedContact && <StatusBadge variant={selectedContact.status}>{selectedContact.status.toUpperCase()}</StatusBadge>}
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          {selectedContact && (
+            <Tabs defaultValue="info" className="mt-4">
+              <TabsList className="grid grid-cols-4 bg-muted">
+                <TabsTrigger value="info">Info</TabsTrigger>
+                <TabsTrigger value="discovery">Discovery</TabsTrigger>
+                <TabsTrigger value="story">Story</TabsTrigger>
+                <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="info" className="space-y-4 mt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground uppercase">Phone</p>
+                    <p className="text-foreground flex items-center gap-2">
+                      <Phone className="w-4 h-4 text-success" />
+                      {selectedContact.phone || "N/A"}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground uppercase">Email</p>
+                    <p className="text-foreground flex items-center gap-2">
+                      <Mail className="w-4 h-4" />
+                      {selectedContact.email || "N/A"}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground uppercase">Location</p>
+                    <p className="text-foreground flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-destructive" />
+                      {selectedContact.location || "N/A"}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground uppercase">Property Address</p>
+                    <p className="text-foreground">{selectedContact.propertyAddress || "N/A"}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground uppercase">Lead Score</p>
+                    <p className="text-foreground text-2xl font-bold">{selectedContact.score}/10</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground uppercase">Last Contact</p>
+                    <p className="text-foreground">{selectedContact.lastContact || "N/A"}</p>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase">Entry Requirements</p>
+                  <p className="text-foreground">{selectedContact.entryRequirements.filter(Boolean).length}/10 completed</p>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="discovery" className="space-y-4 mt-4">
+                {selectedContact.nepqQuestion1 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-foreground">Q: {selectedContact.nepqQuestion1}</p>
+                    <p className="text-sm text-muted-foreground bg-secondary p-3 rounded-lg">{selectedContact.nepqAnswer1 || "No answer recorded"}</p>
+                  </div>
+                )}
+                {selectedContact.nepqQuestion2 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-foreground">Q: {selectedContact.nepqQuestion2}</p>
+                    <p className="text-sm text-muted-foreground bg-secondary p-3 rounded-lg">{selectedContact.nepqAnswer2 || "No answer recorded"}</p>
+                  </div>
+                )}
+                {selectedContact.propertySituation && (
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground uppercase">Property Situation</p>
+                    <p className="text-sm text-foreground bg-secondary p-3 rounded-lg">{selectedContact.propertySituation}</p>
+                  </div>
+                )}
+                {!selectedContact.nepqQuestion1 && !selectedContact.nepqQuestion2 && !selectedContact.propertySituation && (
+                  <p className="text-muted-foreground text-center py-8">No discovery data recorded</p>
+                )}
+              </TabsContent>
+              
+              <TabsContent value="story" className="space-y-4 mt-4">
+                {selectedContact.callNarrative ? (
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground uppercase">Call Narrative</p>
+                    <p className="text-sm text-foreground bg-secondary p-3 rounded-lg whitespace-pre-wrap">{selectedContact.callNarrative}</p>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-center py-8">No call narrative recorded</p>
+                )}
+                {selectedContact.callDuration > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground uppercase">Call Duration</p>
+                    <p className="text-foreground">{selectedContact.callDuration} minutes</p>
+                  </div>
+                )}
+                {selectedContact.additionalNotes && (
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground uppercase">Additional Notes</p>
+                    <p className="text-sm text-foreground bg-secondary p-3 rounded-lg">{selectedContact.additionalNotes}</p>
+                  </div>
+                )}
+              </TabsContent>
+              
+              <TabsContent value="pipeline" className="space-y-4 mt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground uppercase">Call Status</p>
+                    <p className="text-foreground capitalize">{selectedContact.callStatus || "N/A"}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground uppercase">Follow-up Count</p>
+                    <p className="text-foreground">{selectedContact.followUpCount}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground uppercase">Callback Date</p>
+                    <p className="text-foreground">{selectedContact.callbackDate || "Not scheduled"}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground uppercase">Next Action</p>
+                    <p className="text-foreground">{selectedContact.nextAction || "None"}</p>
+                  </div>
+                </div>
+                <div className="flex gap-4 pt-4 border-t border-border">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${selectedContact.valuationInterest ? 'bg-success' : 'bg-muted'}`} />
+                    <span className="text-sm">Valuation Interest</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${selectedContact.valuationScheduled ? 'bg-success' : 'bg-muted'}`} />
+                    <span className="text-sm">Valuation Scheduled</span>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
