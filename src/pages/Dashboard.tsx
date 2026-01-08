@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Users, TrendingUp, Megaphone, Calendar, ArrowUpRight, ArrowDownRight, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { OutlookCalendar } from "@/components/dashboard/OutlookCalendar";
 
 const recentActivity = [
   { type: "contact", message: "New contact added: John Smith", time: "2 hours ago" },
@@ -116,7 +117,14 @@ export default function Dashboard() {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Outlook Calendar - Takes up more space */}
+        <div className="lg:col-span-2">
+          <OutlookCalendar />
+        </div>
+
+        {/* Right Column */}
+        <div className="space-y-6">
         {/* Recent Activity */}
         <Card className="p-6 bg-card border-border">
           <h3 className="text-lg font-semibold text-foreground mb-4">Recent Activity</h3>
@@ -167,6 +175,7 @@ export default function Dashboard() {
             </button>
           </div>
         </Card>
+        </div>
       </div>
 
       {/* Add Contact Dialog */}
