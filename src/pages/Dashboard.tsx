@@ -125,56 +125,56 @@ export default function Dashboard() {
 
         {/* Right Column */}
         <div className="space-y-6">
-        {/* Recent Activity */}
-        <Card className="p-6 bg-card border-border">
-          <h3 className="text-lg font-semibold text-foreground mb-4">Recent Activity</h3>
-          <div className="space-y-4">
-            {recentActivity.map((activity, index) => (
-              <div key={index} className="flex items-start gap-3 pb-3 border-b border-border last:border-0">
-                <div className="w-2 h-2 rounded-full bg-primary mt-2" />
-                <div className="flex-1">
-                  <p className="text-sm text-foreground">{activity.message}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
+          {/* Recent Activity */}
+          <Card className="p-6 bg-card border-border">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Recent Activity</h3>
+            <div className="space-y-4">
+              {recentActivity.map((activity, index) => (
+                <div key={index} className="flex items-start gap-3 pb-3 border-b border-border last:border-0">
+                  <div className="w-2 h-2 rounded-full bg-primary mt-2" />
+                  <div className="flex-1">
+                    <p className="text-sm text-foreground">{activity.message}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </Card>
+              ))}
+            </div>
+          </Card>
 
-        {/* Quick Actions */}
-        <Card className="p-6 bg-card border-border">
-          <h3 className="text-lg font-semibold text-foreground mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <button 
-              onClick={() => setContactDialogOpen(true)}
-              className="flex items-center gap-3 p-4 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
-            >
-              <Users className="w-5 h-5 text-primary" />
-              <span className="text-sm font-medium">Add Contact</span>
-            </button>
-            <button 
-              onClick={() => setDealDialogOpen(true)}
-              className="flex items-center gap-3 p-4 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
-            >
-              <TrendingUp className="w-5 h-5 text-success" />
-              <span className="text-sm font-medium">New Deal</span>
-            </button>
-            <button 
-              onClick={() => setCampaignDialogOpen(true)}
-              className="flex items-center gap-3 p-4 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
-            >
-              <Megaphone className="w-5 h-5 text-warning" />
-              <span className="text-sm font-medium">Start Campaign</span>
-            </button>
-            <button 
-              onClick={() => setAppointmentDialogOpen(true)}
-              className="flex items-center gap-3 p-4 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
-            >
-              <Calendar className="w-5 h-5 text-info" />
-              <span className="text-sm font-medium">Schedule</span>
-            </button>
-          </div>
-        </Card>
+          {/* Quick Actions */}
+          <Card className="p-6 bg-card border-border">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Quick Actions</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <button 
+                onClick={() => setContactDialogOpen(true)}
+                className="flex items-center gap-3 p-4 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
+              >
+                <Users className="w-5 h-5 text-primary" />
+                <span className="text-sm font-medium">Add Contact</span>
+              </button>
+              <button 
+                onClick={() => setDealDialogOpen(true)}
+                className="flex items-center gap-3 p-4 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
+              >
+                <TrendingUp className="w-5 h-5 text-success" />
+                <span className="text-sm font-medium">New Deal</span>
+              </button>
+              <button 
+                onClick={() => setCampaignDialogOpen(true)}
+                className="flex items-center gap-3 p-4 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
+              >
+                <Megaphone className="w-5 h-5 text-warning" />
+                <span className="text-sm font-medium">Start Campaign</span>
+              </button>
+              <button 
+                onClick={() => setAppointmentDialogOpen(true)}
+                className="flex items-center gap-3 p-4 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
+              >
+                <Calendar className="w-5 h-5 text-info" />
+                <span className="text-sm font-medium">Schedule</span>
+              </button>
+            </div>
+          </Card>
         </div>
       </div>
 
