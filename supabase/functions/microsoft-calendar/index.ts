@@ -17,11 +17,26 @@ serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const { action, code, redirectUri, accessToken } = await req.json().catch(() => ({}));
+    const body = await req.json().catch(() => ({}));
+    const { action, code, redirectUri, accessToken } = body;
+
+    console.log("Microsoft Calendar: Action requested:", action);
+    console.log("Microsoft Calendar: Redirect URI provided:", redirectUri);
+
+    // Validate environment variables
+    if (!CLIENT_ID || !CLIENT_SECRET) {
+      console.error("Microsoft Calendar: Missing MICROSOFT_CLIENT_ID or MICROSOFT_CLIENT_SECRET");
+      return new Response(JSON.stringify({ 
+        error: "Server configuration error: Microsoft credentials not configured" 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Generate auth URL
     if (action === "getAuthUrl") {
-      const redirect = redirectUri || `${url.origin}/`;
+      const redirect = redirectUri || "https://datadungeon.lovable.app/";
       const scope = "Calendars.Read User.Read offline_access";
       const authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?` +
         `client_id=${CLIENT_ID}` +
@@ -31,6 +46,7 @@ serve(async (req) => {
         `&scope=${encodeURIComponent(scope)}` +
         `&prompt=consent`;
 
+      console.log("Microsoft Calendar: Generated auth URL with redirect:", redirect);
       return new Response(JSON.stringify({ authUrl }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -38,6 +54,24 @@ serve(async (req) => {
 
     // Exchange code for tokens
     if (action === "exchangeCode") {
+      if (!code) {
+        console.error("Microsoft Calendar: No authorization code provided");
+        return new Response(JSON.stringify({ error: "Authorization code is required" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (!redirectUri) {
+        console.error("Microsoft Calendar: No redirect URI provided for code exchange");
+        return new Response(JSON.stringify({ error: "Redirect URI is required" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      console.log("Microsoft Calendar: Exchanging code for tokens with redirect URI:", redirectUri);
+      
       const tokenResponse = await fetch("https://login.microsoftonline.com/common/oauth2/v2.0/token", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -53,13 +87,19 @@ serve(async (req) => {
       const tokens = await tokenResponse.json();
       
       if (tokens.error) {
-        console.error("Token exchange error:", tokens);
-        return new Response(JSON.stringify({ error: tokens.error_description || tokens.error }), {
+        console.error("Microsoft Calendar: Token exchange error:", JSON.stringify(tokens));
+        console.error("Microsoft Calendar: This usually means the redirect_uri doesn't match what's registered in Azure");
+        console.error("Microsoft Calendar: Redirect URI used:", redirectUri);
+        return new Response(JSON.stringify({ 
+          error: tokens.error_description || tokens.error,
+          hint: "Ensure the redirect URI matches exactly what's registered in Azure AD"
+        }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
+      console.log("Microsoft Calendar: Token exchange successful");
       return new Response(JSON.stringify({
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token,

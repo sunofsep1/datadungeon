@@ -26,6 +26,19 @@ type ViewMode = "day" | "week" | "month";
 
 const STORAGE_KEY = "outlook_tokens";
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
+const PRODUCTION_REDIRECT_URI = "https://datadungeon.lovable.app/";
+
+// Get the correct redirect URI - use production URL when on production domain
+const getRedirectUri = () => {
+  const origin = window.location.origin;
+  // Use production URL if on the production domain
+  if (origin.includes("datadungeon.lovable.app")) {
+    return PRODUCTION_REDIRECT_URI;
+  }
+  // For development/preview, still use origin but log a warning
+  console.warn("OAuth redirect: Using non-production URL. Make sure this URL is registered in Azure:", origin + "/");
+  return origin + "/";
+};
 
 export function OutlookCalendar() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -75,40 +88,80 @@ export function OutlookCalendar() {
   const handleConnect = async () => {
     setIsLoading(true);
     try {
-      const redirectUri = window.location.origin + "/";
+      const redirectUri = getRedirectUri();
+      console.log("OAuth: Initiating connection with redirect URI:", redirectUri);
+      
       const { data, error } = await supabase.functions.invoke("microsoft-calendar", {
         body: { action: "getAuthUrl", redirectUri },
       });
-      if (error) throw error;
+      
+      if (error) {
+        console.error("OAuth: Edge function error:", error);
+        throw error;
+      }
+      
+      if (!data?.authUrl) {
+        console.error("OAuth: No auth URL returned from edge function", data);
+        throw new Error("No authentication URL received");
+      }
+      
+      console.log("OAuth: Redirecting to Microsoft login");
       window.location.href = data.authUrl;
-    } catch (error) {
-      console.error("Connect error:", error);
-      toast({ title: "Connection Failed", description: "Could not initiate Microsoft login", variant: "destructive" });
+    } catch (error: any) {
+      console.error("OAuth: Connect error:", error);
+      toast({ 
+        title: "Connection Failed", 
+        description: error.message || "Could not initiate Microsoft login. Check console for details.", 
+        variant: "destructive" 
+      });
       setIsLoading(false);
     }
   };
 
   const handleAuthCallback = async (code: string) => {
     setIsLoading(true);
+    console.log("OAuth: Processing authorization callback");
+    
     try {
-      const redirectUri = window.location.origin + "/";
+      const redirectUri = getRedirectUri();
+      console.log("OAuth: Exchanging code with redirect URI:", redirectUri);
+      
       const { data, error } = await supabase.functions.invoke("microsoft-calendar", {
         body: { action: "exchangeCode", code, redirectUri },
       });
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      
+      if (error) {
+        console.error("OAuth: Edge function error during code exchange:", error);
+        throw error;
+      }
+      
+      if (data.error) {
+        console.error("OAuth: Token exchange failed:", data.error);
+        throw new Error(data.error);
+      }
+      
+      if (!data.accessToken) {
+        console.error("OAuth: No access token in response:", data);
+        throw new Error("No access token received from Microsoft");
+      }
 
+      console.log("OAuth: Successfully obtained tokens, storing...");
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         accessToken: data.accessToken,
         refreshToken: data.refreshToken,
         expiresAt: Date.now() + data.expiresIn * 1000,
       }));
+      
       setAccessToken(data.accessToken);
       setIsConnected(true);
       toast({ title: "Connected!", description: "Your Outlook calendar is now linked" });
     } catch (error: any) {
-      console.error("Auth callback error:", error);
-      toast({ title: "Authentication Failed", description: error.message || "Could not complete Microsoft login", variant: "destructive" });
+      console.error("OAuth: Auth callback error:", error);
+      toast({ 
+        title: "Authentication Failed", 
+        description: error.message || "Could not complete Microsoft login. Check console for details.", 
+        variant: "destructive" 
+      });
     } finally {
       setIsLoading(false);
     }
