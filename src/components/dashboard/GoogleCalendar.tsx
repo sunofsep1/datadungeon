@@ -9,35 +9,31 @@ import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays, addW
 
 interface CalendarEvent {
   id: string;
-  subject: string;
-  start: { dateTime: string; timeZone: string };
-  end: { dateTime: string; timeZone: string };
-  location?: { displayName: string };
-  isAllDay?: boolean;
-  webLink?: string;
+  summary: string;
+  start: { dateTime?: string; date?: string };
+  end: { dateTime?: string; date?: string };
+  location?: string;
+  htmlLink?: string;
 }
 
-interface MicrosoftProfile {
-  displayName: string;
-  mail: string;
+interface GoogleProfile {
+  name: string;
+  email: string;
+  picture?: string;
 }
 
 type ViewMode = "day" | "week" | "month";
 
-const STORAGE_KEY = "outlook_tokens";
-const HOURS = Array.from({ length: 24 }, (_, i) => i);
+const STORAGE_KEY = "google_calendar_tokens";
 
-// Azure App Registration requires this exact redirect URI (must match character-for-character)
+// Google Cloud Console requires this exact redirect URI
 const REDIRECT_URI = "https://datadungeon.lovable.app/";
 
-const getRedirectUri = () => REDIRECT_URI;
-
-
-export function OutlookCalendar() {
+export function GoogleCalendar() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
-  const [profile, setProfile] = useState<MicrosoftProfile | null>(null);
+  const [profile, setProfile] = useState<GoogleProfile | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -81,11 +77,10 @@ export function OutlookCalendar() {
   const handleConnect = async () => {
     setIsLoading(true);
     try {
-      const redirectUri = getRedirectUri();
-      console.log("OAuth: Initiating connection with redirect URI:", redirectUri);
+      console.log("OAuth: Initiating Google connection with redirect URI:", REDIRECT_URI);
       
-      const { data, error } = await supabase.functions.invoke("microsoft-calendar", {
-        body: { action: "getAuthUrl", redirectUri },
+      const { data, error } = await supabase.functions.invoke("google-calendar", {
+        body: { action: "getAuthUrl", redirectUri: REDIRECT_URI },
       });
       
       if (error) {
@@ -98,13 +93,13 @@ export function OutlookCalendar() {
         throw new Error("No authentication URL received");
       }
       
-      console.log("OAuth: Redirecting to Microsoft login");
+      console.log("OAuth: Redirecting to Google login");
       window.location.href = data.authUrl;
     } catch (error: any) {
       console.error("OAuth: Connect error:", error);
       toast({ 
         title: "Connection Failed", 
-        description: error.message || "Could not initiate Microsoft login. Check console for details.", 
+        description: error.message || "Could not initiate Google login. Check console for details.", 
         variant: "destructive" 
       });
       setIsLoading(false);
@@ -113,14 +108,13 @@ export function OutlookCalendar() {
 
   const handleAuthCallback = async (code: string) => {
     setIsLoading(true);
-    console.log("OAuth: Processing authorization callback");
+    console.log("OAuth: Processing Google authorization callback");
     
     try {
-      const redirectUri = getRedirectUri();
-      console.log("OAuth: Exchanging code with redirect URI:", redirectUri);
+      console.log("OAuth: Exchanging code with redirect URI:", REDIRECT_URI);
       
-      const { data, error } = await supabase.functions.invoke("microsoft-calendar", {
-        body: { action: "exchangeCode", code, redirectUri },
+      const { data, error } = await supabase.functions.invoke("google-calendar", {
+        body: { action: "exchangeCode", code, redirectUri: REDIRECT_URI },
       });
       
       if (error) {
@@ -135,7 +129,7 @@ export function OutlookCalendar() {
       
       if (!data.accessToken) {
         console.error("OAuth: No access token in response:", data);
-        throw new Error("No access token received from Microsoft");
+        throw new Error("No access token received from Google");
       }
 
       console.log("OAuth: Successfully obtained tokens, storing...");
@@ -147,12 +141,12 @@ export function OutlookCalendar() {
       
       setAccessToken(data.accessToken);
       setIsConnected(true);
-      toast({ title: "Connected!", description: "Your Outlook calendar is now linked" });
+      toast({ title: "Connected!", description: "Your Google Calendar is now linked" });
     } catch (error: any) {
       console.error("OAuth: Auth callback error:", error);
       toast({ 
         title: "Authentication Failed", 
-        description: error.message || "Could not complete Microsoft login. Check console for details.", 
+        description: error.message || "Could not complete Google login. Check console for details.", 
         variant: "destructive" 
       });
     } finally {
@@ -162,7 +156,7 @@ export function OutlookCalendar() {
 
   const fetchProfile = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke("microsoft-calendar", {
+      const { data, error } = await supabase.functions.invoke("google-calendar", {
         body: { action: "getProfile", accessToken },
       });
       if (error) throw error;
@@ -175,14 +169,14 @@ export function OutlookCalendar() {
   const fetchEvents = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("microsoft-calendar", {
+      const { data, error } = await supabase.functions.invoke("google-calendar", {
         body: { action: "getEvents", accessToken },
       });
       if (error) throw error;
       if (data.error) {
         if (data.status === 401) {
           handleDisconnect();
-          toast({ title: "Session Expired", description: "Please reconnect your Outlook calendar", variant: "destructive" });
+          toast({ title: "Session Expired", description: "Please reconnect your Google Calendar", variant: "destructive" });
           return;
         }
         throw new Error(data.error);
@@ -202,7 +196,7 @@ export function OutlookCalendar() {
     setIsConnected(false);
     setEvents([]);
     setProfile(null);
-    toast({ title: "Disconnected", description: "Outlook calendar has been unlinked" });
+    toast({ title: "Disconnected", description: "Google Calendar has been unlinked" });
   };
 
   const navigatePrevious = () => {
@@ -239,7 +233,7 @@ export function OutlookCalendar() {
       while (day <= end || days.length % 7 !== 0) {
         days.push(day);
         day = addDays(day, 1);
-        if (days.length > 42) break; // Max 6 weeks
+        if (days.length > 42) break;
       }
       return days;
     }
@@ -248,13 +242,17 @@ export function OutlookCalendar() {
   // Get events for a specific day
   const getEventsForDay = (date: Date) => {
     return events.filter(event => {
-      const eventDate = parseISO(event.start.dateTime);
+      const eventDateTime = event.start.dateTime || event.start.date;
+      if (!eventDateTime) return false;
+      const eventDate = parseISO(eventDateTime);
       return isSameDay(eventDate, date);
     });
   };
 
-  const formatEventTime = (dateTime: string) => {
-    return format(parseISO(dateTime), "h:mm a");
+  const formatEventTime = (event: CalendarEvent) => {
+    if (event.start.date) return "All Day";
+    if (event.start.dateTime) return format(parseISO(event.start.dateTime), "h:mm a");
+    return "";
   };
 
   const getHeaderText = () => {
@@ -272,18 +270,18 @@ export function OutlookCalendar() {
       <Card className="p-6 bg-card border-border">
         <div className="flex items-center gap-2 mb-4">
           <Calendar className="w-5 h-5 text-info" />
-          <h3 className="text-lg font-semibold text-foreground">Outlook Calendar</h3>
+          <h3 className="text-lg font-semibold text-foreground">Google Calendar</h3>
         </div>
         <div className="flex flex-col items-center justify-center py-8">
           <div className="w-16 h-16 rounded-lg bg-info/20 flex items-center justify-center mb-4">
             <Calendar className="w-8 h-8 text-info" />
           </div>
           <p className="text-muted-foreground mb-4 text-center">
-            Connect your Microsoft Outlook calendar to see your appointments
+            Connect your Google Calendar to see your appointments
           </p>
           <Button onClick={handleConnect} disabled={isLoading} className="gap-2">
             {isLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Calendar className="w-4 h-4" />}
-            Connect Outlook
+            Connect Google Calendar
           </Button>
         </div>
       </Card>
@@ -296,7 +294,7 @@ export function OutlookCalendar() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
           <Calendar className="w-5 h-5 text-info" />
-          <h3 className="text-lg font-semibold text-foreground">Outlook Calendar</h3>
+          <h3 className="text-lg font-semibold text-foreground">Google Calendar</h3>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={fetchEvents} disabled={isLoading}>
@@ -310,9 +308,12 @@ export function OutlookCalendar() {
 
       {profile && (
         <div className="flex items-center gap-2 mb-4 p-2 bg-secondary rounded-lg">
+          {profile.picture && (
+            <img src={profile.picture} alt={profile.name} className="w-6 h-6 rounded-full" />
+          )}
           <User className="w-4 h-4 text-muted-foreground" />
           <span className="text-sm text-muted-foreground truncate">
-            {profile.displayName} ({profile.mail})
+            {profile.name} ({profile.email})
           </span>
         </div>
       )}
@@ -373,15 +374,13 @@ export function OutlookCalendar() {
                       {getEventsForDay(date).slice(0, 3).map((event) => (
                         <a
                           key={event.id}
-                          href={event.webLink}
+                          href={event.htmlLink}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="block p-1.5 bg-primary/20 rounded text-xs hover:bg-primary/30 transition-colors"
                         >
-                          <p className="font-medium text-foreground truncate">{event.subject}</p>
-                          <p className="text-muted-foreground">
-                            {event.isAllDay ? "All Day" : formatEventTime(event.start.dateTime)}
-                          </p>
+                          <p className="font-medium text-foreground truncate">{event.summary}</p>
+                          <p className="text-muted-foreground">{formatEventTime(event)}</p>
                         </a>
                       ))}
                       {getEventsForDay(date).length > 3 && (
@@ -430,12 +429,12 @@ export function OutlookCalendar() {
                         {dayEvents.slice(0, 2).map((event) => (
                           <a
                             key={event.id}
-                            href={event.webLink}
+                            href={event.htmlLink}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="block px-1 py-0.5 bg-primary/20 rounded text-[10px] truncate hover:bg-primary/30 transition-colors"
                           >
-                            {event.subject}
+                            {event.summary}
                           </a>
                         ))}
                         {dayEvents.length > 2 && (
@@ -454,24 +453,24 @@ export function OutlookCalendar() {
   );
 }
 
-function EventCard({ event, formatTime }: { event: CalendarEvent; formatTime: (dt: string) => string }) {
+function EventCard({ event, formatTime }: { event: CalendarEvent; formatTime: (event: CalendarEvent) => string }) {
   return (
     <a
-      href={event.webLink}
+      href={event.htmlLink}
       target="_blank"
       rel="noopener noreferrer"
       className="block p-3 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors"
     >
-      <p className="font-medium text-foreground text-sm mb-1">{event.subject}</p>
+      <p className="font-medium text-foreground text-sm mb-1">{event.summary}</p>
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1">
           <Clock className="w-3 h-3" />
-          {event.isAllDay ? "All Day" : `${formatTime(event.start.dateTime)} - ${formatTime(event.end.dateTime)}`}
+          {formatTime(event)}
         </span>
-        {event.location?.displayName && (
+        {event.location && (
           <span className="flex items-center gap-1">
             <MapPin className="w-3 h-3" />
-            {event.location.displayName}
+            {event.location}
           </span>
         )}
       </div>
