@@ -26,19 +26,12 @@ type ViewMode = "day" | "week" | "month";
 
 const STORAGE_KEY = "outlook_tokens";
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
-const PRODUCTION_REDIRECT_URI = "https://datadungeon.lovable.app/";
 
-// Get the correct redirect URI - use production URL when on production domain
-const getRedirectUri = () => {
-  const origin = window.location.origin;
-  // Use production URL if on the production domain
-  if (origin.includes("datadungeon.lovable.app")) {
-    return PRODUCTION_REDIRECT_URI;
-  }
-  // For development/preview, still use origin but log a warning
-  console.warn("OAuth redirect: Using non-production URL. Make sure this URL is registered in Azure:", origin + "/");
-  return origin + "/";
-};
+// Azure App Registration requires this exact redirect URI (must match character-for-character)
+const REDIRECT_URI = "https://datadungeon.lovable.app/";
+
+const getRedirectUri = () => REDIRECT_URI;
+
 
 export function OutlookCalendar() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
