@@ -5,7 +5,8 @@ const Index = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    navigate("/dashboard");
+    // Preserve OAuth callback params (e.g. ?code=...) when redirecting to the dashboard
+    navigate(`/dashboard${window.location.search}`);
   }, [navigate]);
 
   return null;
