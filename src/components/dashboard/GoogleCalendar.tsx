@@ -39,32 +39,36 @@ export function GoogleCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const { toast } = useToast();
 
-  // Check for stored tokens on mount
+  // Check for stored tokens and handle OAuth callback on mount
   useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get("code");
+    
+    // If there's an authorization code in URL, handle it first
+    if (code) {
+      console.log("OAuth: Found authorization code in URL, processing callback...");
+      // Clear URL immediately to prevent re-processing
+      window.history.replaceState({}, document.title, window.location.pathname);
+      handleAuthCallback(code);
+      return;
+    }
+    
+    // Otherwise, check for stored tokens
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
         const tokens = JSON.parse(stored);
         if (tokens.accessToken) {
+          console.log("OAuth: Found stored tokens, restoring session...");
           setAccessToken(tokens.accessToken);
           setIsConnected(true);
         }
       } catch {
+        console.log("OAuth: Invalid stored tokens, clearing...");
         localStorage.removeItem(STORAGE_KEY);
       }
     }
   }, []);
-
-  // Handle OAuth callback
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get("code");
-    
-    if (code && !isConnected) {
-      handleAuthCallback(code);
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  }, [isConnected]);
 
   // Fetch events when connected
   useEffect(() => {
